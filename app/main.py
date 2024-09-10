@@ -1,6 +1,8 @@
 import socket  # noqa: F401
 from dataclasses import dataclass
 
+from app.srv import start_server
+
 
 def handle_set(data):
     return "SET command processed"
@@ -51,6 +53,8 @@ def parse_command(s: str):
     match s:
         case "PING":
             return "PING"
+        case "ECHO":
+            return "ECHO"
 
 
 def parse_request(data: bytes):
@@ -59,19 +63,31 @@ def parse_request(data: bytes):
     request_type = parse_type(r[0])
     r = r[1:]
     command = parse_command(r[1])
-    r = r[2:]
+    if not len(r) == 2:
+        r = r[2:]
+    else:
+        r = list()
     req = Request(command=command, type=request_type, data=r)
     print(req)
+    ret_string = None
     match req.command:
         case "PING":
-            return "+PONG"
-    # match req.type:
-    #     case Array():
-    #         for i in range(1, len(r), 2):
-    #             l = r[i - 1]
-    #             word_len = int(l[1:])
-    #             word = r[i]
-    #             print(f"Word: {word}, Len: {word_len}")
+            ret_string = "+PONG"
+        case "ECHO":
+            if not req.data:
+                return "-ERR: Invalid Command"
+    match req.type:
+        case Array():
+            arr_str = list()
+            for i in range(1, len(r), 2):
+                l = r[i - 1]
+                word_len = int(l[1:])
+                word = r[i]
+                print(f"Word: {word}, Len: {word_len}")
+                arr_str.append(word)
+            ret_string = "+" + " ".join(arr_str)
+    print(f"ret string: {ret_string}")
+    return ret_string
 
 
 def handle_command(sock):
@@ -89,16 +105,6 @@ def handle_command(sock):
     except ConnectionResetError:
         print("Connection closed")
         return
-
-
-def start_server():
-    # You can use print statements as follows for debugging, they'll be visible when running tests.
-    print("Started")
-    server_socket = socket.create_server(("localhost", 6379))
-    while True:
-        sock, addr = server_socket.accept()  # wait for client
-        print(f"Connected : {addr}")
-        handle_command(sock)
 
 
 if __name__ == "__main__":
